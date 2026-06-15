@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=280">
+  <link rel="stylesheet" href="popup.css">
+  <title>FocusTube</title>
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">🎯 FocusTube</h1>
+    <p class="subtitle">YouTube Focus Mode</p>
+
+    <button id="toggleBtn">Enable Focus Mode</button>
+
+    <hr class="separator">
+
+    <div class="dim-label">
+      <span>Dim Level</span>
+      <span id="dimValue">0%</span>
+    </div>
+    <input type="range" id="dimSlider" min="0" max="100" value="0" step="1">
+
+    <p class="footer">Alt+Z to toggle anywhere</p>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+body {
+  width: 280px;
+  background: #111;
+  color: white;
+  font-family: sans-serif;
+  padding: 16px;
+  margin: 0;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.subtitle {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 16px;
+}
+
+#toggleBtn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  margin-bottom: 16px;
+}
+
+.separator {
+  height: 1px;
+  background: #333;
+  margin: 12px 0;
+}
+
+.dim-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: #ccc;
+}
+
+#dimSlider {
+  width: 100%;
+  accent-color: #00c853;
+}
+
+.footer {
+  margin-top: 16px;
+  font-size: 11px;
+  color: #555;
+  text-align: center;
+}
