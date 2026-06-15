@@ -1,0 +1,47 @@
+#focustube-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2000;
+  background: #000000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+  will-change: opacity;
+}
+
+.focustube-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.4s ease !important;
+}
+
+#focustube-btn {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 9999;
+  padding: 8px 16px;
+  background: rgba(0,0,0,0.8);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: sans-serif;
+  transition: background 0.3s ease;
+  user-select: none;
+}
+
+#focustube-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+body.focustube-active #movie_player {
+  z-index: 2001 !important;
+  position: relative !important;
+  isolation: isolate;
+  transform: translateZ(0);
+}
