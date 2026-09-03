@@ -1,9 +1,12 @@
-chrome.commands.onCommand.addListener(cmd => {
-  if (cmd !== 'toggle-focus') return;
-  chrome.tabs.query({ active: true, url: 'https://www.youtube.com/*' }, tabs => {
+chrome.commands.onCommand.addListener((command) => {
+  if (command !== 'toggle-focus') return;
+
+  chrome.tabs.query({ active: true, url: 'https://www.youtube.com/*' }, (tabs) => {
     if (!tabs.length) return;
     chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleFocus' }, () => {
-      if (chrome.runtime.lastError) {}
+      // The tab may not have the content script loaded (e.g. right after
+      // a reload), so ignore sendMessage failures silently.
+      void chrome.runtime.lastError;
     });
   });
 });

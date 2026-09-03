@@ -1,56 +1,67 @@
+// FocusTube content script
+// Runs on every YouTube page. Detects watch pages, injects the
+// dim overlay + floating button, and handles SPA navigation.
+
+const OVERLAY_ID = 'focustube-overlay';
+const BTN_ID = 'focustube-btn';
+const PLAYER_SEL = '#movie_player';
+
+// Distraction elements we hide when focus mode is on.
+const DISTRACTIONS = [
+  '#masthead',        // top nav bar
+  '#secondary',       // recommendations sidebar
+  'ytd-comments',     // comments section
+  '#description',     // video description
+  '#owner',           // channel bar
+  '#below',           // like/share/action row
+  'ytd-playlist-panel-renderer' // playlist sidebar
+];
+
 let focusModeActive = false;
 let currentDimLevel = 0;
 
-function createOverlay() {
-  if (document.getElementById('focustube-overlay')) return;
-  const el = document.createElement('div');
-  el.id = 'focustube-overlay';
-  Object.assign(el.style, {
-    position: 'fixed',
-    inset: '0',
-    zIndex: '2000',
-    background: '#000',
-    opacity: '0',
-    pointerEvents: 'none',
-    transition: 'opacity 0.4s ease'
-  });
-  document.body.appendChild(el);
+// -- DOM helpers -----------------------------------------------------------
+
+// Make sure the full-screen overlay exists exactly once.
+function ensureOverlay() {
+  if (document.getElementById(OVERLAY_ID)) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = OVERLAY_ID;
+  overlay.style.cssText = `
+    position: fixed; inset: 0; z-index: 2000;
+    background: #000; opacity: 0; pointer-events: none;
+    transition: opacity 0.4s ease;
+  `;
+  document.body.appendChild(overlay);
 }
 
-function waitForElement(sel, cb, maxWait = 10000) {
-  const iv = setInterval(() => {
-    const el = document.querySelector(sel);
+// Poll for an element that YouTube may render asynchronously
+// (the player especially). Gives up after maxWait ms.
+function waitFor(selector, onFound, maxWait = 10000) {
+  const poll = setInterval(() => {
+    const el = document.querySelector(selector);
     if (el) {
-      clearInterval(iv);
-      clearTimeout(t);
-      cb(el);
+      clearInterval(poll);
+      clearTimeout(failTimer);
+      onFound(el);
     }
   }, 300);
-  const t = setTimeout(() => clearInterval(iv), maxWait);
+
+  const failTimer = setTimeout(() => clearInterval(poll), maxWait);
 }
 
-function getPlayer() {
-  return document.querySelector('#movie_player');
-}
+const getPlayer = () => document.querySelector(PLAYER_SEL);
 
-function hideDistractions() {
-  ['#masthead', '#secondary', 'ytd-comments', '#description',
-   '#owner', '#below', 'ytd-playlist-panel-renderer'].forEach(s => {
-    const el = document.querySelector(s);
-    if (el) el.classList.add('focustube-hidden');
-  });
-}
-
-function showDistractions() {
-  document.querySelectorAll('.focustube-hidden').forEach(el => {
-    el.classList.remove('focustube-hidden');
-  });
-}
+// -- Focus mode ------------------------------------------------------------
 
 function enableFocusMode(dim) {
-  const overlay = document.getElementById('focustube-overlay');
+  const overlay = document.getElementById(OVERLAY_ID);
   if (overlay) overlay.style.opacity = dim / 100;
 
+  // Lift the player above the overlay. YouTube nests the player in
+  // stacking contexts that ignore plain z-index, so we also force
+  // its own compositing layer.
   const player = getPlayer();
   if (player) {
     player.style.zIndex = '2001';
@@ -58,15 +69,19 @@ function enableFocusMode(dim) {
     player.style.transform = 'translateZ(0)';
   }
   document.body.classList.add('focustube-active');
-  hideDistractions();
+
+  DISTRACTIONS.forEach(sel => {
+    const el = document.querySelector(sel);
+    if (el) el.classList.add('focustube-hidden');
+  });
 
   focusModeActive = true;
-  try { chrome.storage.sync.set({ focusModeActive: true, dimLevel: dim }); } catch {}
-  updateBtnText('✖ Exit Focus');
+  persist({ focusModeActive: true, dimLevel: dim });
+  setBtnText('✖ Exit Focus');
 }
 
 function disableFocusMode() {
-  const overlay = document.getElementById('focustube-overlay');
+  const overlay = document.getElementById(OVERLAY_ID);
   if (overlay) overlay.style.opacity = '0';
 
   const player = getPlayer();
@@ -76,96 +91,125 @@ function disableFocusMode() {
     player.style.transform = '';
   }
   document.body.classList.remove('focustube-active');
-  showDistractions();
+
+  document.querySelectorAll('.focustube-hidden').forEach(el => {
+    el.classList.remove('focustube-hidden');
+  });
 
   focusModeActive = false;
-  try { chrome.storage.sync.set({ focusModeActive: false }); } catch {}
-  updateBtnText('🎯 Focus');
+  persist({ focusModeActive: false });
+  setBtnText('🎯 Focus');
 }
 
 function toggleFocusMode() {
   focusModeActive ? disableFocusMode() : enableFocusMode(currentDimLevel);
 }
 
-function updateBtnText(txt) {
-  const btn = document.getElementById('focustube-btn');
+// -- Storage ---------------------------------------------------------------
+
+// The extension can be reloaded while a tab is open, which kills the
+// content script's API bridge. Guard against that so we don't spam errors.
+function persist(data) {
+  try {
+    chrome.storage.sync.set(data);
+  } catch (e) {
+    console.warn('FocusTube: storage unavailable', e);
+  }
+}
+
+function restoreState() {
+  chrome.storage.sync.get(['focusModeActive', 'dimLevel'], data => {
+    if (!data.focusModeActive) return;
+    currentDimLevel = data.dimLevel ?? 0;
+    waitFor(PLAYER_SEL, () => enableFocusMode(currentDimLevel), 8000);
+  });
+}
+
+// -- Floating button -------------------------------------------------------
+
+function setBtnText(txt) {
+  const btn = document.getElementById(BTN_ID);
   if (btn) btn.textContent = txt;
 }
 
 function createFloatingButton() {
-  if (!location.pathname.includes('/watch') || document.getElementById('focustube-btn')) return;
+  if (!location.pathname.includes('/watch')) return;
+  if (document.getElementById(BTN_ID)) return;
 
   const btn = document.createElement('div');
-  btn.id = 'focustube-btn';
+  btn.id = BTN_ID;
   btn.textContent = '🎯 Focus';
-  Object.assign(btn.style, {
-    position: 'fixed',
-    bottom: '24px',
-    left: '24px',
-    zIndex: '9999',
-    padding: '8px 16px',
-    background: 'rgba(0,0,0,0.8)',
-    color: 'white',
-    border: '1px solid rgba(255,255,255,0.3)',
-    borderRadius: '20px',
-    fontSize: '13px',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease'
-  });
-  btn.addEventListener('mouseenter', () => btn.style.background = 'rgba(255,255,255,0.15)');
-  btn.addEventListener('mouseleave', () => btn.style.background = 'rgba(0,0,0,0.8)');
+  btn.style.cssText = `
+    position: fixed; bottom: 24px; left: 24px; z-index: 9999;
+    padding: 8px 16px; background: rgba(0,0,0,0.8); color: white;
+    border: 1px solid rgba(255,255,255,0.3); border-radius: 20px;
+    font-size: 13px; cursor: pointer; transition: all 0.3s ease;
+  `;
+  btn.addEventListener('mouseenter', () => (btn.style.background = 'rgba(255,255,255,0.15)'));
+  btn.addEventListener('mouseleave', () => (btn.style.background = 'rgba(0,0,0,0.8)'));
   btn.addEventListener('click', toggleFocusMode);
   document.body.appendChild(btn);
 }
 
+// -- SPA navigation --------------------------------------------------------
+// YouTube swaps pages without a reload. Both the custom event and the
+// title observer fire a debounced navigation handler, and the handler
+// itself has a cooldown so everything settles first.
+
 let navTimeout;
+let lastNavFire = 0;
+
 function debounceNav() {
   if (navTimeout) return;
-  navTimeout = setTimeout(() => { navTimeout = null; handleNavigation(); }, 500);
+  navTimeout = setTimeout(() => {
+    navTimeout = null;
+    handleNavigation();
+  }, 500);
 }
 
-let lastNav = 0;
 function handleNavigation() {
-  if (Date.now() - lastNav < 600) return;
-  lastNav = Date.now();
+  // Cooldown guard in case multiple events fire in quick succession.
+  if (Date.now() - lastNavFire < 600) return;
+  lastNavFire = Date.now();
 
   if (location.pathname.includes('/watch')) {
-    createOverlay();
+    ensureOverlay();
     createFloatingButton();
-    chrome.storage.sync.get(['focusModeActive', 'dimLevel'], (data) => {
-      if (data.focusModeActive) {
-        currentDimLevel = data.dimLevel ?? 0;
-        waitForElement('#movie_player', () => enableFocusMode(currentDimLevel), 8000);
-      }
-    });
+    restoreState();
   } else {
+    // Left a watch page — clean everything up.
     disableFocusMode();
-    const btn = document.getElementById('focustube-btn');
+    const btn = document.getElementById(BTN_ID);
     if (btn) btn.remove();
   }
 }
 
 window.addEventListener('yt-navigate-finish', debounceNav);
 
-const mo = new MutationObserver(debounceNav);
+const titleObserver = new MutationObserver(debounceNav);
 const titleEl = document.querySelector('title');
-if (titleEl) mo.observe(titleEl, { childList: true, subtree: true });
+if (titleEl) titleObserver.observe(titleEl, { childList: true, subtree: true });
 
+// Kick things off for the initial load.
 handleNavigation();
 
-chrome.runtime.onMessage.addListener((msg, _, respond) => {
-  if (msg.action === 'toggleFocus') {
-    toggleFocusMode();
-    respond({ status: 'ok', focusModeActive });
+// -- Message handling ------------------------------------------------------
+
+chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
+  switch (msg.action) {
+    case 'toggleFocus':
+      toggleFocusMode();
+      respond({ status: 'ok', focusModeActive });
+      break;
+    case 'updateDim':
+      currentDimLevel = msg.dimLevel;
+      const overlay = document.getElementById(OVERLAY_ID);
+      if (overlay && focusModeActive) overlay.style.opacity = msg.dimLevel / 100;
+      respond({ status: 'ok' });
+      break;
+    case 'getStatus':
+      respond({ focusModeActive, dimLevel: currentDimLevel });
+      break;
   }
-  if (msg.action === 'updateDim') {
-    currentDimLevel = msg.dimLevel;
-    const overlay = document.getElementById('focustube-overlay');
-    if (overlay && focusModeActive) overlay.style.opacity = msg.dimLevel / 100;
-    respond({ status: 'ok' });
-  }
-  if (msg.action === 'getStatus') {
-    respond({ focusModeActive, dimLevel: currentDimLevel });
-  }
-  return true;
+  return true; // keep the channel open for async responses
 });
