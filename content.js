@@ -8,13 +8,16 @@ const PLAYER_SEL = '#movie_player';
 
 // Distraction elements we hide when focus mode is on.
 const DISTRACTIONS = [
-  '#masthead',        // top nav bar
-  '#secondary',       // recommendations sidebar
-  'ytd-comments',     // comments section
-  '#description',     // video description
-  '#owner',           // channel bar
-  '#below',           // like/share/action row
-  'ytd-playlist-panel-renderer' // playlist sidebar
+  '#masthead',                    // top nav bar
+  '#secondary',                   // recommendations sidebar
+  '#related',                     // related videos (older layouts)
+  'ytd-watch-flexy #secondary',   // modern recommendations sidebar
+  'ytd-comments',                 // comments section
+  '#comments',                    // older comments container
+  '#description',                 // video description
+  '#owner',                       // channel bar
+  '#below',                       // like/share/action row
+  'ytd-playlist-panel-renderer'   // playlist sidebar
 ];
 
 let focusModeActive = false;
