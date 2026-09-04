@@ -142,7 +142,7 @@ Maintain attention during:
 1. Clone or download the repository
 
 ```bash
-git clone https://github.com/yourusername/focustube.git
+git clone https://github.com/Xenon010101/FocusTube.git
 ```
 
 2. Open:
@@ -212,6 +212,8 @@ FocusTube:
 ✅ Requires no account  
 
 Everything runs locally.
+
+Read the full [Privacy Policy](https://xenon010101.github.io/FocusTube/PRIVACY.html).
 
 ---
 
