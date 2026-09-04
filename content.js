@@ -22,6 +22,7 @@ const DISTRACTIONS = [
 
 let focusModeActive = false;
 let currentDimLevel = 0;
+let distractionTimeout;
 
 // -- DOM helpers -----------------------------------------------------------
 
@@ -56,11 +57,36 @@ function waitFor(selector, onFound, maxWait = 10000) {
 
 const getPlayer = () => document.querySelector(PLAYER_SEL);
 
+function normaliseDim(value) {
+  return Math.min(100, Math.max(0, Number(value) || 0));
+}
+
+function hideDistractions() {
+  if (!focusModeActive) return;
+  DISTRACTIONS.forEach(sel => {
+    const el = document.querySelector(sel);
+    if (el) el.classList.add('focustube-hidden');
+  });
+}
+
+// YouTube frequently replaces page sections after navigation. Re-apply the
+// hidden state once its render burst settles, rather than losing focus mode.
+const distractionObserver = new MutationObserver(() => {
+  if (!focusModeActive || distractionTimeout) return;
+  distractionTimeout = setTimeout(() => {
+    distractionTimeout = null;
+    hideDistractions();
+  }, 100);
+});
+
+distractionObserver.observe(document.documentElement, { childList: true, subtree: true });
+
 // -- Focus mode ------------------------------------------------------------
 
 function enableFocusMode(dim) {
+  currentDimLevel = normaliseDim(dim);
   const overlay = document.getElementById(OVERLAY_ID);
-  if (overlay) overlay.style.opacity = dim / 100;
+  if (overlay) overlay.style.opacity = currentDimLevel / 100;
 
   // Lift the player above the overlay. YouTube nests the player in
   // stacking contexts that ignore plain z-index, so we also force
@@ -73,13 +99,9 @@ function enableFocusMode(dim) {
   }
   document.body.classList.add('focustube-active');
 
-  DISTRACTIONS.forEach(sel => {
-    const el = document.querySelector(sel);
-    if (el) el.classList.add('focustube-hidden');
-  });
-
   focusModeActive = true;
-  persist({ focusModeActive: true, dimLevel: dim });
+  hideDistractions();
+  persist({ dimLevel: currentDimLevel });
   setBtnText('✖ Exit Focus');
 }
 
@@ -100,7 +122,6 @@ function disableFocusMode() {
   });
 
   focusModeActive = false;
-  persist({ focusModeActive: false });
   setBtnText('🎯 Focus');
 }
 
@@ -120,28 +141,41 @@ function persist(data) {
   }
 }
 
-function restoreState() {
-  chrome.storage.sync.get(['focusModeActive', 'dimLevel'], data => {
-    if (!data.focusModeActive) return;
-    currentDimLevel = data.dimLevel ?? 0;
-    waitFor(PLAYER_SEL, () => enableFocusMode(currentDimLevel), 8000);
+function restoreSettings(onRestored) {
+  chrome.storage.sync.get('dimLevel', data => {
+    currentDimLevel = normaliseDim(data.dimLevel);
+    onRestored?.();
   });
 }
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'sync' || !changes.dimLevel) return;
+  currentDimLevel = normaliseDim(changes.dimLevel.newValue);
+  const overlay = document.getElementById(OVERLAY_ID);
+  if (overlay && focusModeActive) overlay.style.opacity = currentDimLevel / 100;
+});
 
 // -- Floating button -------------------------------------------------------
 
 function setBtnText(txt) {
   const btn = document.getElementById(BTN_ID);
-  if (btn) btn.textContent = txt;
+  if (btn) {
+    btn.textContent = txt;
+    btn.setAttribute('aria-pressed', String(focusModeActive));
+    btn.setAttribute('aria-label', focusModeActive ? 'Disable Focus Mode' : 'Enable Focus Mode');
+  }
 }
 
 function createFloatingButton() {
   if (!location.pathname.includes('/watch')) return;
   if (document.getElementById(BTN_ID)) return;
 
-  const btn = document.createElement('div');
+  const btn = document.createElement('button');
   btn.id = BTN_ID;
+  btn.type = 'button';
   btn.textContent = '🎯 Focus';
+  btn.setAttribute('aria-label', 'Enable Focus Mode');
+  btn.setAttribute('aria-pressed', 'false');
   btn.style.cssText = `
     position: fixed; bottom: 24px; left: 24px; z-index: 9999;
     padding: 8px 16px; background: rgba(0,0,0,0.8); color: white;
@@ -178,7 +212,16 @@ function handleNavigation() {
   if (location.pathname.includes('/watch')) {
     ensureOverlay();
     createFloatingButton();
-    restoreState();
+    restoreSettings(() => {
+      // A previously scheduled callback may fire after the user leaves the
+      // watch page. Never restore focus mode onto a different YouTube view.
+      if (!focusModeActive || !location.pathname.includes('/watch')) return;
+      waitFor(PLAYER_SEL, () => {
+        if (focusModeActive && location.pathname.includes('/watch')) {
+          enableFocusMode(currentDimLevel);
+        }
+      }, 8000);
+    });
   } else {
     // Left a watch page — clean everything up.
     disableFocusMode();
@@ -205,9 +248,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
       respond({ status: 'ok', focusModeActive });
       break;
     case 'updateDim':
-      currentDimLevel = msg.dimLevel;
+      currentDimLevel = normaliseDim(msg.dimLevel);
       const overlay = document.getElementById(OVERLAY_ID);
-      if (overlay && focusModeActive) overlay.style.opacity = msg.dimLevel / 100;
+      if (overlay && focusModeActive) overlay.style.opacity = currentDimLevel / 100;
       respond({ status: 'ok' });
       break;
     case 'getStatus':
