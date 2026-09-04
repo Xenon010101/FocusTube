@@ -12,5 +12,8 @@ chrome.commands.onCommand.addListener((command) => {
 });
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.sync.set({ focusModeActive: false, dimLevel: 0 });
+  // Do not overwrite an existing preference when the extension updates.
+  chrome.storage.sync.get('dimLevel', ({ dimLevel }) => {
+    if (dimLevel === undefined) chrome.storage.sync.set({ dimLevel: 0 });
+  });
 });
