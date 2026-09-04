@@ -8,6 +8,15 @@ function debounce(fn, ms) {
   };
 }
 
+function isYouTubeWatchPage(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname === 'www.youtube.com' && parsed.pathname === '/watch';
+  } catch {
+    return false;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('toggleBtn');
   const slider = document.getElementById('dimSlider');
@@ -15,21 +24,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // The popup closes when the user clicks elsewhere, so we read state
   // fresh on every open.
-  chrome.storage.sync.get(['focusModeActive', 'dimLevel'], (data) => {
+  chrome.storage.sync.get('dimLevel', (data) => {
     const dim = data.dimLevel ?? 0;
     slider.value = dim;
     pct.textContent = dim + '%';
-    renderButton(data.focusModeActive);
+
+    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+      if (!tab?.id) return renderButton(false);
+      chrome.tabs.sendMessage(tab.id, { action: 'getStatus' }, (res) => {
+        void chrome.runtime.lastError;
+        renderButton(Boolean(res?.focusModeActive));
+      });
+    });
   });
 
   function renderButton(active) {
-    btn.textContent = active ? '✖ Disable Focus Mode' : '🎯 Enable Focus Mode';
+    btn.textContent = active ? '✖ Disable Focus Mode' : 'Enable Focus Mode';
     btn.style.background = active ? '#00c853' : '#444';
   }
 
   btn.addEventListener('click', () => {
     chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-      if (!tab?.url?.includes('youtube.com/watch')) {
+      if (!isYouTubeWatchPage(tab?.url)) {
         alert('Please open a YouTube video first');
         return;
       }
@@ -58,11 +74,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Keep the popup in sync if focus is toggled from the keyboard
-  // (Alt+Z) while it's open.
+  // Dim level is shared as a preference across tabs. Focus state itself is
+  // intentionally tab-local, so it is always read from the active tab above.
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync') return;
-    if (changes.focusModeActive) renderButton(changes.focusModeActive.newValue);
     if (changes.dimLevel) {
       slider.value = changes.dimLevel.newValue;
       pct.textContent = changes.dimLevel.newValue + '%';
