@@ -23,6 +23,7 @@ const DISTRACTIONS = [
 let focusModeActive = false;
 let currentDimLevel = 0;
 let distractionTimeout;
+let isObservingDistractions = false;
 
 // -- DOM helpers -----------------------------------------------------------
 
@@ -57,7 +58,7 @@ function waitFor(selector, onFound, maxWait = 10000) {
 
 const getPlayer = () => document.querySelector(PLAYER_SEL);
 
-function normaliseDim(value) {
+function normalizeDim(value) {
   return Math.min(100, Math.max(0, Number(value) || 0));
 }
 
@@ -79,12 +80,25 @@ const distractionObserver = new MutationObserver(() => {
   }, 100);
 });
 
-distractionObserver.observe(document.documentElement, { childList: true, subtree: true });
+function startDistractionObserver() {
+  if (isObservingDistractions) return;
+  distractionObserver.observe(document.documentElement, { childList: true, subtree: true });
+  isObservingDistractions = true;
+}
+
+function stopDistractionObserver() {
+  distractionObserver.disconnect();
+  isObservingDistractions = false;
+  if (distractionTimeout) {
+    clearTimeout(distractionTimeout);
+    distractionTimeout = null;
+  }
+}
 
 // -- Focus mode ------------------------------------------------------------
 
 function enableFocusMode(dim) {
-  currentDimLevel = normaliseDim(dim);
+  currentDimLevel = normalizeDim(dim);
   const overlay = document.getElementById(OVERLAY_ID);
   if (overlay) overlay.style.opacity = currentDimLevel / 100;
 
@@ -100,8 +114,10 @@ function enableFocusMode(dim) {
   document.body.classList.add('focustube-active');
 
   focusModeActive = true;
+  startDistractionObserver();
   hideDistractions();
-  persist({ dimLevel: currentDimLevel });
+  savePreferences({ dimLevel: currentDimLevel });
+  persistFocusState(true);
   setBtnText('✖ Exit Focus');
 }
 
@@ -122,6 +138,8 @@ function disableFocusMode() {
   });
 
   focusModeActive = false;
+  stopDistractionObserver();
+  persistFocusState(false);
   setBtnText('🎯 Focus');
 }
 
@@ -133,7 +151,7 @@ function toggleFocusMode() {
 
 // The extension can be reloaded while a tab is open, which kills the
 // content script's API bridge. Guard against that so we don't spam errors.
-function persist(data) {
+function savePreferences(data) {
   try {
     chrome.storage.sync.set(data);
   } catch (e) {
@@ -141,16 +159,26 @@ function persist(data) {
   }
 }
 
+function persistFocusState(active) {
+  chrome.runtime.sendMessage({ action: 'setFocusState', active }, () => {
+    void chrome.runtime.lastError;
+  });
+}
+
 function restoreSettings(onRestored) {
   chrome.storage.sync.get('dimLevel', data => {
-    currentDimLevel = normaliseDim(data.dimLevel);
-    onRestored?.();
+    currentDimLevel = normalizeDim(data.dimLevel);
+    chrome.runtime.sendMessage({ action: 'getFocusState' }, response => {
+      void chrome.runtime.lastError;
+      focusModeActive = Boolean(response?.active);
+      onRestored?.();
+    });
   });
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync' || !changes.dimLevel) return;
-  currentDimLevel = normaliseDim(changes.dimLevel.newValue);
+  currentDimLevel = normalizeDim(changes.dimLevel.newValue);
   const overlay = document.getElementById(OVERLAY_ID);
   if (overlay && focusModeActive) overlay.style.opacity = currentDimLevel / 100;
 });
@@ -248,7 +276,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
       respond({ status: 'ok', focusModeActive });
       break;
     case 'updateDim':
-      currentDimLevel = normaliseDim(msg.dimLevel);
+      currentDimLevel = normalizeDim(msg.dimLevel);
       const overlay = document.getElementById(OVERLAY_ID);
       if (overlay && focusModeActive) overlay.style.opacity = currentDimLevel / 100;
       respond({ status: 'ok' });
