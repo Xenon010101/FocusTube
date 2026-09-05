@@ -41,8 +41,6 @@ FocusTube requests the following permissions and how they are used:
 |---|---|
 | `storage` | Saves your dim-level preference and per-tab focus state, as described above |
 | `activeTab` | Lets the toolbar/popup interact with the currently active tab when you click the FocusTube icon |
-| `scripting` | Not actively used; reserved for programmatic injection capabilities |
-| `tabs` (implied) | Used only to identify the active YouTube tab; no browsing data is read |
 
 ## Third-party services
 
@@ -58,4 +56,5 @@ If this policy changes, the updated date at the top of this document will be rev
 
 ## Contact
 
-For questions about this policy, contact the developer via the GitHub repository for this project.
+For questions about this policy, open an issue at
+[github.com/Xenon010101/FocusTube](https://github.com/Xenon010101/FocusTube).
