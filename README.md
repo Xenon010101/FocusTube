@@ -1,294 +1,81 @@
-# 🎯 FocusTube
+# FocusTube
 
-### The YouTube experience built for deep work.
+FocusTube is a lightweight browser extension that creates a distraction-free YouTube viewing experience for learning, tutorials, and intentional watching.
 
-FocusTube removes everything competing for your attention and leaves only what matters: **the video.**
+It keeps the video player in place while hiding the surrounding elements that pull attention away from the video.
 
-No recommendations.  
-No comments.  
-No clickbait.  
-No endless rabbit holes.
+[Install FocusTube from Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/cjhibbneibhhcjiiekbhfgiilhijgibo)
 
-Just focused learning.
+## Features
 
-Whether you're preparing for interviews, studying for exams, watching online courses, or following coding tutorials, FocusTube transforms YouTube into a distraction-free workspace designed for concentration.
+- Hide recommendations, comments, navigation, metadata, channel details, action panels, and playlist sidebars.
+- Apply a configurable dim overlay without covering the video player.
+- Toggle Focus Mode from the extension popup, the floating in-page control, or `Alt + Z`.
+- Preserve the dim preference and temporary Focus Mode state per tab.
+- Continue Focus Mode across YouTube's single-page video navigation.
+- Run entirely in the browser with no accounts, analytics, trackers, or remote code.
 
-> **Stay on the lesson. Not the platform.**
+## Install locally
 
----
+FocusTube can be loaded as an unpacked extension in Chrome or Microsoft Edge.
 
-## Why FocusTube?
+1. Clone the repository:
 
-Modern YouTube is optimized to maximize watch time.
+   ```bash
+   git clone https://github.com/Xenon010101/FocusTube.git
+   ```
 
-FocusTube is optimized to maximize **focus time**.
+2. Open your browser's extensions page:
 
-While YouTube constantly pulls your attention toward:
+   - Chrome: `chrome://extensions`
+   - Microsoft Edge: `edge://extensions`
 
-- Recommended videos
-- Trending content
-- Notifications
-- Comments
-- Search suggestions
-- Endless scrolling
+3. Enable **Developer mode**.
+4. Select **Load unpacked** and choose the cloned `FocusTube` folder.
+5. Open a YouTube video at `https://www.youtube.com/watch?...`.
 
-FocusTube removes visual noise and helps you stay immersed in the content you intentionally chose to watch.
+## Usage
 
----
+Enable or disable Focus Mode on a YouTube watch page using any of the following:
 
-## ✨ Features
+- The FocusTube toolbar popup.
+- The floating Focus button in the lower-left corner of the page.
+- The `Alt + Z` keyboard shortcut.
 
-### 🎥 True Focus Mode
+Use the popup slider to adjust the dim level. If the keyboard shortcut does not work, assign it in your browser's extension-shortcut settings:
 
-Unlike Theater Mode or Fullscreen Mode, FocusTube preserves the video's original placement.
+- Chrome: `chrome://extensions/shortcuts`
+- Microsoft Edge: `edge://extensions/shortcuts`
 
-The video stays exactly where YouTube intended it.
+## Privacy
 
-- No resizing
-- No repositioning
-- No layout shifts
+FocusTube does not collect, transmit, sell, or share personal data. It does not use analytics, advertising, trackers, accounts, or remotely hosted code.
 
-Simply less distraction.
+Browser storage is used only for:
 
----
-
-### 🌑 Distraction-Free Canvas
-
-FocusTube hides:
-
-- Related Videos
-- Recommendations
-- Comments
-- Search Bar
-- YouTube Header
-- Channel Information
-- Video Description
-- End Screen Suggestions
-
-The result is a clean viewing environment that feels intentional and calm.
-
----
-
-### ⚡ Instant Toggle
-
-Enable Focus Mode anytime with:
-
-```text
-Alt + Z
-```
-
-Switch between normal YouTube and FocusTube in a single keystroke.
-
----
-
-### 🎚 Adjustable Dimming
-
-Choose how immersive your environment feels.
-
-From subtle dimming to near-black backgrounds, FocusTube adapts to your preferred focus level.
-
----
-
-### 🪶 Lightweight by Design
-
-- No analytics
-- No trackers
-- No external requests
-- No unnecessary permissions
-
-FocusTube runs entirely in your browser.
-
-Fast. Private. Reliable.
-
----
-
-## 📚 Perfect For
-
-### Students
-
-Stay focused during:
-
-- Exam preparation
-- Aptitude practice
-- Placement preparation
-- Competitive exams
-- Online lectures
-
-### Developers
-
-Learn without distractions:
-
-- DSA tutorials
-- System Design
-- LeetCode walkthroughs
-- Programming courses
-- Technical interviews
-
-### Professionals
-
-Maintain attention during:
-
-- Training videos
-- Certifications
-- Research sessions
-- Skill development
-
----
-
-## 🚀 Installation
-
-### Chrome / Edge
-
-1. Clone or download the repository
-
-```bash
-git clone https://github.com/Xenon010101/FocusTube.git
-```
-
-2. Open:
-
-```text
-chrome://extensions
-```
-
-3. Enable **Developer Mode**
-
-4. Click **Load Unpacked**
-
-5. Select the FocusTube folder
-
-6. Pin the extension
-
-7. Open YouTube and start focusing.
-
----
-
-## 🎮 Usage
-
-### Keyboard Shortcut
-
-```text
-Alt + Z
-```
-
-Toggle Focus Mode instantly.
-
-### Popup Controls
-
-The extension popup allows you to:
-
-- Enable or disable Focus Mode
-- Adjust dim intensity
-- Save preferences
-
----
-
-## 📸 Experience
-
-### Before
-
-A page filled with:
-
-- Recommendations
-- Comments
-- Suggested content
-- Attention traps
-
-### After
-
-A focused viewing environment where the content becomes the center of attention.
-
----
-
-## 🔒 Privacy First
-
-Your data belongs to you.
-
-FocusTube:
-
-✅ Collects no personal data  
-✅ Uses no analytics  
-✅ Sends no information to external servers  
-✅ Requires no account  
-
-Everything runs locally.
+- Your dim-level preference.
+- Temporary per-tab Focus Mode state during the browser session.
 
 Read the full [Privacy Policy](https://xenon010101.github.io/FocusTube/PRIVACY.html).
 
----
+## Development
 
-## 🛠 Troubleshooting
+FocusTube is a Manifest V3 extension with no build step and no third-party runtime dependencies.
 
-### Keyboard Shortcut Doesn't Work
+| File | Purpose |
+| --- | --- |
+| `manifest.json` | Extension metadata, permissions, content-script registration, popup, icons, and shortcut. |
+| `content.js` | Focus Mode behavior, dim overlay, YouTube navigation handling, and in-page controls. |
+| `content.css` | Styles for the overlay, hidden elements, and floating control. |
+| `popup.html`, `popup.js`, `popup.css` | Toolbar popup and dim-level controls. |
+| `background.js` | Keyboard command handling and per-tab session state. |
 
-Visit:
+After making changes, reload the unpacked extension from the browser's extensions page. Test the popup, dim slider, floating control, `Alt + Z`, and navigation between YouTube videos.
 
-```text
-chrome://extensions/shortcuts
-```
+## Contributing
 
-Verify that:
+Contributions, bug reports, and feature requests are welcome. Please keep changes aligned with the extension's single purpose: reducing distractions on YouTube watch pages.
 
-```text
-Alt + Z
-```
+## License
 
-is assigned.
-
-### Some Elements Still Appear
-
-YouTube occasionally updates its interface.
-
-Try:
-
-1. Refreshing the page
-2. Toggling Focus Mode off and on
-3. Updating to the latest extension version
-
----
-
-## 🗺 Roadmap
-
-### Coming Soon
-
-- Spotlight Mode
-- Blur Mode
-- Auto Focus on Video Pages
-- Pomodoro Sessions
-- Study Analytics
-- Focus Streaks
-- LeetCode Focus Mode
-- Coursera Focus Mode
-- Udemy Focus Mode
-
----
-
-## 🤝 Contributing
-
-Great products are built together.
-
-Contributions, ideas, bug reports, and feature requests are welcome.
-
-If you'd like to improve FocusTube, open an issue or submit a pull request.
-
----
-
-## ⭐ Support The Project
-
-If FocusTube helps you stay focused, consider giving the repository a star.
-
-It helps more learners discover the project.
-
----
-
-# FocusTube
-
-### Watch intentionally.
-
-### Learn deeply.
-
-### Ignore everything else.
-
----
-
-**Built for students, developers, and lifelong learners who value attention as their most important resource.**
+No license has been specified for this repository.
