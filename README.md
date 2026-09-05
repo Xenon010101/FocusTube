@@ -78,4 +78,4 @@ Contributions, bug reports, and feature requests are welcome. Please keep change
 
 ## License
 
-No license has been specified for this repository.
+This project is licensed under the [MIT License](LICENSE).
