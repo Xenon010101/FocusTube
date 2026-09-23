@@ -6,6 +6,14 @@ It keeps the video player in place while hiding the surrounding elements that pu
 
 [Install FocusTube from Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/cjhibbneibhhcjiiekbhfgiilhijgibo)
 
+## See the difference
+
+FocusTube leaves the video player untouched while reducing the visual noise around it.
+
+| Before enabling Focus Mode | Focus Mode active |
+| --- | --- |
+| <img src="docs/screenshots/before-focus-mode.png" alt="YouTube watch page before enabling Focus Mode, with the FocusTube popup open" width="100%" /> | <img src="docs/screenshots/focus-mode-active.png" alt="YouTube watch page with Focus Mode active, showing only the video player and Exit Focus control" width="100%" /> |
+
 ## Features
 
 - Hide recommendations, comments, navigation, metadata, channel details, action panels, and playlist sidebars.
