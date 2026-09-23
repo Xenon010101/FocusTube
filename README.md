@@ -15,24 +15,31 @@ It keeps the video player in place while hiding the surrounding elements that pu
 - Continue Focus Mode across YouTube's single-page video navigation.
 - Run entirely in the browser with no accounts, analytics, trackers, or remote code.
 
-## Install locally
+## Install
 
-FocusTube can be loaded as an unpacked extension in Chrome or Microsoft Edge.
+### Microsoft Edge
 
-1. Clone the repository:
+FocusTube is available directly from Microsoft Edge Add-ons:
 
-   ```bash
-   git clone https://github.com/Xenon010101/FocusTube.git
-   ```
+[Install FocusTube from Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/cjhibbneibhhcjiiekbhfgiilhijgibo)
 
-2. Open your browser's extensions page:
+Click **Get** and the extension will be installed automatically.
 
-   - Chrome: `chrome://extensions`
-   - Microsoft Edge: `edge://extensions`
+---
 
-3. Enable **Developer mode**.
-4. Select **Load unpacked** and choose the cloned `FocusTube` folder.
-5. Open a YouTube video at `https://www.youtube.com/watch?...`.
+### Google Chrome
+
+FocusTube is not yet available on the Chrome Web Store, but you can install it manually in a few steps.
+
+#### Option 1 — Download ZIP
+
+1. Go to the [FocusTube GitHub repository](https://github.com/Xenon010101/FocusTube).
+2. Click **Code → Download ZIP**.
+3. Extract the downloaded ZIP file.
+4. Open Chrome and go to:
+
+   ```text
+   chrome://extensions
 
 ## Usage
 
