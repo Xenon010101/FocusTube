@@ -1,4 +1,8 @@
-# FocusTube
+<p align="center">
+  <img src="icons/icon128.png" width="96" alt="FocusTube logo" />
+</p>
+
+<h1 align="center">FocusTube</h1>
 
 FocusTube is a lightweight browser extension that creates a distraction-free YouTube viewing experience for learning, tutorials, and intentional watching.
 
