@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FocusTube",
-  "version": "1.0",
+  "version": "1.1.0",
   "description": "Focus on YouTube videos by hiding all distractions",
   "content_scripts": [
     {
