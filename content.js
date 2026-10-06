@@ -5,6 +5,7 @@
 const OVERLAY_ID = 'focustube-overlay';
 const BTN_ID = 'focustube-btn';
 const PLAYER_SEL = '#movie_player';
+const BUTTON_MARGIN = 12;
 
 // Distraction elements we hide when focus mode is on.
 const DISTRACTIONS = [
@@ -22,6 +23,7 @@ const DISTRACTIONS = [
 
 let focusModeActive = false;
 let currentDimLevel = 0;
+let savedButtonPosition = null;
 let distractionTimeout;
 let isObservingDistractions = false;
 
@@ -166,8 +168,9 @@ function persistFocusState(active) {
 }
 
 function restoreSettings(onRestored) {
-  chrome.storage.sync.get('dimLevel', data => {
+  chrome.storage.sync.get(['dimLevel', 'focusButtonPosition'], data => {
     currentDimLevel = normalizeDim(data.dimLevel);
+    savedButtonPosition = data.focusButtonPosition || null;
     chrome.runtime.sendMessage({ action: 'getFocusState' }, response => {
       void chrome.runtime.lastError;
       focusModeActive = Boolean(response?.active);
@@ -177,10 +180,17 @@ function restoreSettings(onRestored) {
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'sync' || !changes.dimLevel) return;
-  currentDimLevel = normalizeDim(changes.dimLevel.newValue);
-  const overlay = document.getElementById(OVERLAY_ID);
-  if (overlay && focusModeActive) overlay.style.opacity = currentDimLevel / 100;
+  if (area !== 'sync') return;
+  if (changes.dimLevel) {
+    currentDimLevel = normalizeDim(changes.dimLevel.newValue);
+    const overlay = document.getElementById(OVERLAY_ID);
+    if (overlay && focusModeActive) overlay.style.opacity = currentDimLevel / 100;
+  }
+  if (changes.focusButtonPosition) {
+    savedButtonPosition = changes.focusButtonPosition.newValue || null;
+    const btn = document.getElementById(BTN_ID);
+    if (btn) applyButtonPosition(btn, savedButtonPosition);
+  }
 });
 
 // -- Floating button -------------------------------------------------------
@@ -194,6 +204,98 @@ function setBtnText(txt) {
   }
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getButtonBounds(btn) {
+  const { width, height } = btn.getBoundingClientRect();
+  return {
+    maxLeft: Math.max(BUTTON_MARGIN, window.innerWidth - width - BUTTON_MARGIN),
+    maxTop: Math.max(BUTTON_MARGIN, window.innerHeight - height - BUTTON_MARGIN)
+  };
+}
+
+function applyButtonPosition(btn, position) {
+  if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)) return;
+
+  const { maxLeft, maxTop } = getButtonBounds(btn);
+  const left = BUTTON_MARGIN + clamp(position.x, 0, 1) * (maxLeft - BUTTON_MARGIN);
+  const top = BUTTON_MARGIN + clamp(position.y, 0, 1) * (maxTop - BUTTON_MARGIN);
+
+  btn.style.left = `${Math.round(left)}px`;
+  btn.style.top = `${Math.round(top)}px`;
+  btn.style.right = 'auto';
+  btn.style.bottom = 'auto';
+}
+
+function saveButtonPosition(btn) {
+  const rect = btn.getBoundingClientRect();
+  const { maxLeft, maxTop } = getButtonBounds(btn);
+  const position = {
+    x: (rect.left - BUTTON_MARGIN) / Math.max(1, maxLeft - BUTTON_MARGIN),
+    y: (rect.top - BUTTON_MARGIN) / Math.max(1, maxTop - BUTTON_MARGIN)
+  };
+  savedButtonPosition = position;
+  savePreferences({ focusButtonPosition: position });
+}
+
+function makeButtonDraggable(btn) {
+  let dragStart = null;
+  let dragged = false;
+  let suppressClick = false;
+
+  btn.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    const rect = btn.getBoundingClientRect();
+    dragStart = {
+      pointerId: event.pointerId,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      startX: event.clientX,
+      startY: event.clientY
+    };
+    dragged = false;
+    btn.setPointerCapture(event.pointerId);
+  });
+
+  btn.addEventListener('pointermove', event => {
+    if (!dragStart || event.pointerId !== dragStart.pointerId) return;
+    const moved = Math.abs(event.clientX - dragStart.startX) + Math.abs(event.clientY - dragStart.startY);
+    if (moved < 4) return;
+
+    dragged = true;
+    const { maxLeft, maxTop } = getButtonBounds(btn);
+    const left = clamp(event.clientX - dragStart.offsetX, BUTTON_MARGIN, maxLeft);
+    const top = clamp(event.clientY - dragStart.offsetY, BUTTON_MARGIN, maxTop);
+    btn.style.left = `${Math.round(left)}px`;
+    btn.style.top = `${Math.round(top)}px`;
+    btn.style.right = 'auto';
+    btn.style.bottom = 'auto';
+    btn.style.cursor = 'grabbing';
+  });
+
+  const finishDrag = event => {
+    if (!dragStart || event.pointerId !== dragStart.pointerId) return;
+    if (btn.hasPointerCapture(event.pointerId)) btn.releasePointerCapture(event.pointerId);
+    if (dragged) {
+      saveButtonPosition(btn);
+      suppressClick = true;
+    }
+    dragStart = null;
+    btn.style.cursor = 'grab';
+  };
+
+  btn.addEventListener('pointerup', finishDrag);
+  btn.addEventListener('pointercancel', finishDrag);
+  btn.addEventListener('click', event => {
+    if (!suppressClick) return;
+    event.preventDefault();
+    event.stopPropagation();
+    suppressClick = false;
+  }, true);
+}
+
 function createFloatingButton() {
   if (!location.pathname.includes('/watch')) return;
   if (document.getElementById(BTN_ID)) return;
@@ -203,17 +305,21 @@ function createFloatingButton() {
   btn.type = 'button';
   btn.textContent = '🎯 Focus';
   btn.setAttribute('aria-label', 'Enable Focus Mode');
+  btn.setAttribute('aria-description', 'Drag to move this button. Its position is saved automatically.');
   btn.setAttribute('aria-pressed', 'false');
   btn.style.cssText = `
     position: fixed; bottom: 24px; left: 24px; z-index: 9999;
     padding: 8px 16px; background: rgba(0,0,0,0.8); color: white;
     border: 1px solid rgba(255,255,255,0.3); border-radius: 20px;
-    font-size: 13px; cursor: pointer; transition: all 0.3s ease;
+    font-size: 13px; cursor: grab; touch-action: none; user-select: none;
+    transition: background 0.3s ease;
   `;
   btn.addEventListener('mouseenter', () => (btn.style.background = 'rgba(255,255,255,0.15)'));
   btn.addEventListener('mouseleave', () => (btn.style.background = 'rgba(0,0,0,0.8)'));
   btn.addEventListener('click', toggleFocusMode);
   document.body.appendChild(btn);
+  applyButtonPosition(btn, savedButtonPosition);
+  makeButtonDraggable(btn);
 }
 
 // -- SPA navigation --------------------------------------------------------
@@ -239,8 +345,8 @@ function handleNavigation() {
 
   if (location.pathname.includes('/watch')) {
     ensureOverlay();
-    createFloatingButton();
     restoreSettings(() => {
+      createFloatingButton();
       // A previously scheduled callback may fire after the user leaves the
       // watch page. Never restore focus mode onto a different YouTube view.
       if (!focusModeActive || !location.pathname.includes('/watch')) return;
